@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'menu_screen.dart';
+import 'notification_screen.dart';
+import 'create_post_screen.dart'; // Import the new screen here
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -33,25 +36,37 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Menu icon
-                    GestureDetector(
-                      onTap: () {
-                        // Handle menu
-                      },
-                      child: Column(
-                        children: List.generate(
-                          3,
-                              (index) => Container(
-                            margin: const EdgeInsets.only(bottom: 4),
-                            width: 28,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(2),
+                    // --- Menu Icon ---
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(4),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MenuScreen(),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            children: List.generate(
+                              3,
+                                  (index) => Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                width: 28,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -69,16 +84,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
-                    // Notification icon
-                    GestureDetector(
-                      onTap: () {
-                        // Handle notifications
-                      },
-                      child: const Icon(
+                    // --- Notification Icon ---
+                    IconButton(
+                      icon: const Icon(
                         Icons.notifications,
                         color: Colors.white,
                         size: 28,
                       ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -105,6 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+      // --- Floating Action Button Updated ---
       floatingActionButton: Container(
         width: 64,
         height: 64,
@@ -125,7 +146,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: FloatingActionButton(
           onPressed: () {
-            // Handle add post
+            // Navigate to Create Post Screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreatePostScreen(),
+              ),
+            );
           },
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -158,17 +185,15 @@ class PostCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // User info and follow button
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // Profile picture
                 Container(
                   width: 48,
                   height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE0E0E0),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -177,10 +202,7 @@ class PostCard extends StatelessWidget {
                     size: 28,
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
-                // Username
                 Expanded(
                   child: Text(
                     post.username,
@@ -192,8 +214,6 @@ class PostCard extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // Follow button
                 GestureDetector(
                   onTap: onFollowToggle,
                   child: Container(
@@ -221,8 +241,6 @@ class PostCard extends StatelessWidget {
               ],
             ),
           ),
-
-          // Post image
           Image.network(
             post.imageUrl,
             width: double.infinity,

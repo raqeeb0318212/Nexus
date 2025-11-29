@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'signup_screen.dart'; // Import signup screen
-import 'forgot_password_screen.dart'; // Import forgot password screen
-import 'home_screen.dart'; // Import home screen
+import 'home_screen.dart'; // Only use this single import
+import 'signup_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navigate to Home Screen
+                        // Correctly navigates to HomeScreen
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => const HomeScreen()),
