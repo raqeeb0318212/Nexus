@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-
 import 'menu_screen.dart';
- import 'notification_screen.dart';
+import 'notification_screen.dart';
 
 class UserDetailsScreen extends StatefulWidget {
   const UserDetailsScreen({Key? key}) : super(key: key);
@@ -41,8 +39,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            // FIXED: Removed 'const' before MenuScreen()
-                            builder: (context) => MenuScreen(),
+                            builder: (context) => const MenuScreen(),
                           ),
                         );
                       },
@@ -80,8 +77,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            // FIXED: Removed 'const' before NotificationScreen()
-                            builder: (context) => NotificationScreen(),
+                            builder: (context) => const NotificationScreen(),
                           ),
                         );
                       },
@@ -103,6 +99,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                   children: [
                     GestureDetector(
                       onTap: () {
+                        // Logic: Go back to previous screen (MenuScreen)
                         Navigator.pop(context);
                       },
                       child: Row(

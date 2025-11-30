@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 // IMPORTANT: Import your other screens here
 import 'color_change_screen.dart';
 import 'about_app_screen.dart';
-import 'login_screen.dart'; // Make sure to import the Login Screen
+import 'login_screen.dart';
+import 'user_details_screen.dart'; // Import UserDetailsScreen
 
 // Custom colors derived from the Figma design
 const Color _backgroundColor = Color(0xFFEBE3E3);
@@ -113,7 +114,6 @@ class MenuScreen extends StatelessWidget {
                           Navigator.of(dialogContext).pop();
 
                           // 2. Navigate to Login Screen
-                          // pushAndRemoveUntil is used so the user can't click "Back" to return to the app
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -231,7 +231,11 @@ class MenuScreen extends StatelessWidget {
               icon: Icons.person_outline,
               title: 'Profile',
               onTap: () {
-                // Navigate to Profile
+                // --- NAVIGATION LOGIC ADDED HERE ---
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UserDetailsScreen()),
+                );
               },
             ),
             _buildMenuItem(
