@@ -15,7 +15,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  // Renamed controller for clarity
   final TextEditingController confirmPassController = TextEditingController();
 
   final List<TextEditingController> otpControllers = List.generate(
@@ -117,7 +116,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     // Email input field
                     Container(
-                      // Removed fixed height to allow error text to show if needed
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAE3D8),
                         borderRadius: BorderRadius.circular(28),
@@ -125,12 +123,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: TextFormField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          return null;
-                        },
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
@@ -142,9 +134,22 @@ class _SignupScreenState extends State<SignupScreen> {
                             vertical: 16,
                           ),
                           hintText: '',
-                          // Ensure error text doesn't ruin layout
-                          errorStyle: TextStyle(height: 0.5),
+                          errorStyle: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            height: 0.8,
+                          ),
                         ),
+                        // --- EMAIL VALIDATION ---
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!value.contains('@gmail.com')) {
+                            return 'Email must include @gmail.com';
+                          }
+                          return null;
+                        },
                       ),
                     ),
 
@@ -255,12 +260,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: TextFormField(
                         controller: passwordController,
                         obscureText: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter password';
-                          }
-                          return null;
-                        },
+                        obscuringCharacter: '*', // Shows * instead of dots
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
@@ -272,14 +272,28 @@ class _SignupScreenState extends State<SignupScreen> {
                             vertical: 16,
                           ),
                           hintText: '',
-                          errorStyle: TextStyle(height: 0.5),
+                          errorStyle: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            height: 0.8,
+                          ),
                         ),
+                        // --- PASSWORD VALIDATION ---
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter password';
+                          }
+                          if (value.length < 8) {
+                            return 'Password must be at least 8 characters';
+                          }
+                          return null;
+                        },
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Confirm Password label (Changed from Phone Number)
+                    // Confirm Password label
                     const Text(
                       'Confirm Password',
                       style: TextStyle(
@@ -300,16 +314,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       child: TextFormField(
                         controller: confirmPassController,
-                        obscureText: true, // Hides text for password
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please confirm your password';
-                          }
-                          if (value != passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
+                        obscureText: true,
+                        obscuringCharacter: '*', // Shows * instead of dots
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
@@ -321,8 +327,22 @@ class _SignupScreenState extends State<SignupScreen> {
                             vertical: 16,
                           ),
                           hintText: '',
-                          errorStyle: TextStyle(height: 0.5),
+                          errorStyle: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            height: 0.8,
+                          ),
                         ),
+                        // --- CONFIRM PASSWORD VALIDATION ---
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          if (value != passwordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
                       ),
                     ),
 
@@ -334,17 +354,18 @@ class _SignupScreenState extends State<SignupScreen> {
                       height: 56,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Validate returns true if the form is valid, or false otherwise.
                           if (_formKey.currentState!.validate()) {
-                            // If the form is valid, navigate to the Login Screen
+                            // If valid, navigate to Login Screen
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              MaterialPageRoute(
+                                  builder: (context) => const LoginScreen()),
                             );
                           } else {
-                            // Show a snackbar or just let the field errors show
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please fill all fields correctly')),
+                              const SnackBar(
+                                  content:
+                                  Text('Please fill all fields correctly')),
                             );
                           }
                         },
@@ -383,10 +404,11 @@ class _SignupScreenState extends State<SignupScreen> {
                             WidgetSpan(
                               child: GestureDetector(
                                 onTap: () {
-                                  // Handle login navigation
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                        const LoginScreen()),
                                   );
                                 },
                                 child: const Text(

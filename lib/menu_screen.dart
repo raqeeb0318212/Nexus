@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 
-// IMPORTANT: Import your screens here
+// IMPORTANT: Import your other screens here
 import 'color_change_screen.dart';
-import 'about_app_screen.dart'; // Make sure to import the new screen
+import 'about_app_screen.dart';
+import 'login_screen.dart'; // Make sure to import the Login Screen
 
-// Custom color derived from the Figma design's background
+// Custom colors derived from the Figma design
 const Color _backgroundColor = Color(0xFFEBE3E3);
 const Color _foregroundColor = Colors.black87;
+const Color _buttonColor = Color(0xFFCBB8A1);
+const Color _closeIconColor = Color(0xFF5A4C6B);
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
-  // Updated Helper widget: Now accepts an onTap function
+  // Helper widget to build each menu list item
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
@@ -49,6 +52,150 @@ class MenuScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  // Function to show the custom Sign Out Dialog
+  void _showSignOutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30.0),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.8,
+            padding: const EdgeInsets.fromLTRB(25, 20, 25, 20),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    // Title
+                    const Padding(
+                      padding: EdgeInsets.only(top: 20.0, bottom: 8.0),
+                      child: Text(
+                        'Sign out ?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: _foregroundColor,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                    // Subtext
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 30.0),
+                      child: Text(
+                        'If you answer yes, you will be signed\nout from the app.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _foregroundColor,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+
+                    // Yes Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // 1. Close the dialog
+                          Navigator.of(dialogContext).pop();
+
+                          // 2. Navigate to Login Screen
+                          // pushAndRemoveUntil is used so the user can't click "Back" to return to the app
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                (Route<dynamic> route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _buttonColor,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25.0),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Text(
+                          'Yes',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // No Button
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(); // Close dialog
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(40, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'No',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: _foregroundColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+
+                // Close/X Icon Button
+                Positioned(
+                  top: -10,
+                  right: -10,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(dialogContext).pop();
+                      },
+                      borderRadius: BorderRadius.circular(50),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _closeIconColor, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: _closeIconColor,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -103,14 +250,11 @@ class MenuScreen extends StatelessWidget {
               icon: Icons.menu_book_outlined,
               title: 'Events',
             ),
-
-            // --- UPDATED COLOURS ITEM ---
             _buildMenuItem(
               icon: Icons.palette_outlined,
               title: 'Colours',
               isColorful: true,
               onTap: () {
-                // Navigate to ColorChangeScreen
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -119,7 +263,6 @@ class MenuScreen extends StatelessWidget {
                 );
               },
             ),
-
             _buildMenuItem(
               icon: Icons.contact_page_outlined,
               title: 'Contact',
@@ -152,7 +295,7 @@ class MenuScreen extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  // Handle Sign Out
+                  _showSignOutDialog(context);
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -181,7 +324,6 @@ class MenuScreen extends StatelessWidget {
             // 4. ABOUT APP Text
             TextButton(
               onPressed: () {
-                // --- NAVIGATION LOGIC ADDED HERE ---
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -201,6 +343,8 @@ class MenuScreen extends StatelessWidget {
                 ),
               ),
             ),
+
+            const SizedBox(height: 40),
             const SizedBox(height: 20),
           ],
         ),
