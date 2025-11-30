@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'color_change_screen.dart';
 import 'about_app_screen.dart';
 import 'login_screen.dart';
-import 'user_details_screen.dart'; // Import UserDetailsScreen
+import 'user_details_screen.dart';
+import 'home_screen.dart';
+import 'contact_screen.dart'; // <--- ADDED THIS IMPORT
 
 // Custom colors derived from the Figma design
 const Color _backgroundColor = Color(0xFFEBE3E3);
@@ -231,17 +233,24 @@ class MenuScreen extends StatelessWidget {
               icon: Icons.person_outline,
               title: 'Profile',
               onTap: () {
-                // --- NAVIGATION LOGIC ADDED HERE ---
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const UserDetailsScreen()),
                 );
               },
             ),
+
             _buildMenuItem(
               icon: Icons.border_color,
               title: 'Home Feed',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+                );
+              },
             ),
+
             _buildMenuItem(
               icon: Icons.work_outline,
               title: 'Jobs',
@@ -267,10 +276,21 @@ class MenuScreen extends StatelessWidget {
                 );
               },
             ),
+
+            // --- UPDATED CONTACT BUTTON ---
             _buildMenuItem(
               icon: Icons.contact_page_outlined,
               title: 'Contact',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ContactScreen(),
+                  ),
+                );
+              },
             ),
+            // ------------------------------
 
             const SizedBox(height: 70),
 
