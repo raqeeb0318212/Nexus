@@ -42,7 +42,7 @@ class AboutAppScreen extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
@@ -56,7 +56,7 @@ class AboutAppScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const Text(
-              'UniChatHub',
+              'NEXUS',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,

@@ -1,278 +1,350 @@
 import 'package:flutter/material.dart';
-import 'menu_screen.dart'; // Import Menu Screen
-import 'notification_screen.dart'; // Import Notification Screen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
+import 'package:nexus/services/firestore_service.dart';
 
-// --- Color Constants ---
-const Color _primaryTaupe = Color(0xFFB4AFAF);
-const Color _darkText = Color(0xFF333333);
-const Color _lightButtonBg = Color(0xFFEBEBEB);
-const Color _confirmButtonBg = Color(0xFFD2C1A8);
-const Color _editIconGradientStart = Color(0xFF00BFFF);
-const Color _editIconGradientEnd = Color(0xFF1E90FF);
-
-class EditProfileScreen extends StatelessWidget {
+class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _universityController = TextEditingController();
+  final TextEditingController _majorController = TextEditingController();
+
+  File? _selectedImage;
+  String? _currentPhotoUrl;
+  bool _isLoading = false;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentData();
+  }
+
+  Future<void> _loadCurrentData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _nameController.text = user.displayName ?? '';
+    _currentPhotoUrl = user.photoURL;
+
+    // Load additional data from Firestore
+    final userData = await _firestoreService.getUser(user.uid);
+    if (userData != null && mounted) {
+      setState(() {
+        _bioController.text = userData.bio ?? '';
+        _universityController.text = userData.university ?? '';
+        _majorController.text = userData.major ?? '';
+        _currentPhotoUrl = userData.photoUrl ?? user.photoURL;
+        _isInitialized = true;
+      });
+    } else {
+      setState(() => _isInitialized = true);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 500,
+        maxHeight: 500,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<String?> _uploadProfileImage() async {
+    if (_selectedImage == null) return _currentPhotoUrl;
+
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final fileName = 'profiles/$userId.jpg';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+
+      await ref.putFile(_selectedImage!);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload image: $e');
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      String? photoUrl = _currentPhotoUrl;
+      if (_selectedImage != null) {
+        photoUrl = await _uploadProfileImage();
+      }
+
+      // Update Firebase Auth profile
+      await user.updateDisplayName(_nameController.text.trim());
+      if (photoUrl != null) {
+        await user.updatePhotoURL(photoUrl);
+      }
+
+      // Update Firestore profile
+      await _firestoreService.updateUser(user.uid, {
+        'displayName': _nameController.text.trim(),
+        'photoUrl': photoUrl,
+        'bio': _bioController.text.trim(),
+        'university': _universityController.text.trim(),
+        'major': _majorController.text.trim(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate changes
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _primaryTaupe,
+      backgroundColor: const Color(0xFFB4A8A9),
       appBar: AppBar(
-        backgroundColor: _primaryTaupe,
+        backgroundColor: const Color(0xFFB4A8A9),
         elevation: 0,
-        toolbarHeight: 50,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
-          'Profile Setting',
+          'Edit Profile',
           style: TextStyle(
-            color: _darkText,
+            color: Colors.black,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
-        // --- MENU ICON ACTION ---
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: _darkText),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MenuScreen(),
-              ),
-            );
-          },
-        ),
         actions: [
-          // --- NOTIFICATION ICON ACTION ---
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: _darkText),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationScreen(),
-                ),
-              );
-            },
+          TextButton(
+            onPressed: _isLoading ? null : _saveProfile,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    ),
+                  )
+                : const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              // --- Back Button Row ---
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.arrow_back_ios, size: 18, color: _darkText),
-                    SizedBox(width: 4),
-                    Text(
-                      'Back',
-                      style: TextStyle(
-                        color: _darkText,
-                        fontSize: 18,
-                        fontWeight: FontWeight.normal,
+      body: !_isInitialized
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFCBB8A1)),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    // Profile Image
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Colors.white,
+                            backgroundImage: _selectedImage != null
+                                ? FileImage(_selectedImage!)
+                                : (_currentPhotoUrl != null
+                                    ? NetworkImage(_currentPhotoUrl!)
+                                        as ImageProvider
+                                    : null),
+                            child: _selectedImage == null &&
+                                    _currentPhotoUrl == null
+                                ? const Icon(Icons.person,
+                                    size: 60, color: Colors.grey)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFCBB8A1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+
+                    const SizedBox(height: 32),
+
+                    // Name field
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Display Name',
+                      hint: 'Enter your name',
+                      icon: Icons.person_outline,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Name is required';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Bio field
+                    _buildTextField(
+                      controller: _bioController,
+                      label: 'Bio',
+                      hint: 'Tell us about yourself',
+                      icon: Icons.info_outline,
+                      maxLines: 3,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // University field
+                    _buildTextField(
+                      controller: _universityController,
+                      label: 'University',
+                      hint: 'Enter your university',
+                      icon: Icons.school_outlined,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Major field
+                    _buildTextField(
+                      controller: _majorController,
+                      label: 'Major',
+                      hint: 'Enter your major/field of study',
+                      icon: Icons.book_outlined,
+                    ),
+
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
-              const SizedBox(height: 60),
-
-              // --- Profile Avatar with Edit Icon ---
-              const Center(child: _ProfileAvatarWithEdit()),
-
-              const SizedBox(height: 40),
-
-              // --- Edit Username Label ---
-              const Text(
-                'Edit Username',
-                style: TextStyle(
-                  color: _darkText,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // --- Username Input Field ---
-              const _UsernameInputField(),
-
-              const SizedBox(height: 60),
-
-              // --- Confirm Button ---
-              const Center(child: _ConfirmButton()),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileAvatarWithEdit extends StatelessWidget {
-  const _ProfileAvatarWithEdit();
-
-  void _showImagePickerOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Gallery'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  // TODO: Implement Gallery logic
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Camera'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  // TODO: Implement Camera logic
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.bottomRight,
-      children: [
-        // 1. Large Profile Avatar
-        Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _lightButtonBg,
-            border: Border.all(color: _darkText.withOpacity(0.1), width: 1),
-          ),
-          child: const Center(
-            child: Icon(Icons.person, size: 60, color: _darkText),
-          ),
-        ),
-
-        // 2. Overlayed Edit Icon
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: GestureDetector(
-            onTap: () {
-              _showImagePickerOptions(context);
-            },
-            child: Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [_editIconGradientStart, _editIconGradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 2,
-                    offset: const Offset(1, 1),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.edit_outlined,
-                  size: 16,
-                  color: Colors.white,
-                ),
-              ),
             ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: controller,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              prefixIcon: Icon(icon, color: Colors.grey),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(16),
+              errorStyle: const TextStyle(color: Colors.red),
+            ),
+            validator: validator,
           ),
         ),
       ],
     );
   }
-}
-
-class _UsernameInputField extends StatelessWidget {
-  const _UsernameInputField();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: _lightButtonBg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const TextField(
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          hintText: 'Enter new username',
-          hintStyle: TextStyle(color: Colors.grey),
-        ),
-        style: TextStyle(color: _darkText),
-      ),
-    );
-  }
-}
-
-class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 200,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Done Successfully'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _confirmButtonBg,
-          foregroundColor: _darkText,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
-          ),
-          elevation: 2,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-        ),
-        child: const Text(
-          'Confirm',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
+  void dispose() {
+    _nameController.dispose();
+    _bioController.dispose();
+    _universityController.dispose();
+    _majorController.dispose();
+    super.dispose();
   }
 }

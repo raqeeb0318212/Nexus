@@ -1,4 +1,4 @@
-package com.example.unichathub
+package com.example.nexus
 
 import io.flutter.embedding.android.FlutterActivity
 

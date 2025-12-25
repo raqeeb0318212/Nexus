@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:nexus/utils/page_transitions.dart';
 import 'login_screen.dart'; // Import the login screen
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({Key? key}) : super(key: key);
+  const ResetPasswordScreen({super.key});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -27,39 +28,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status bar area
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '9:41',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Row(
-                          children: const [
-                            Icon(Icons.signal_cellular_4_bar,
-                                color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Icon(Icons.wifi, color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Icon(Icons.battery_full, color: Colors.white, size: 20),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
 
                   // App title
                   const Text(
-                    'UniChatHub',
+                    'NEXUS',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 26,
@@ -227,7 +200,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           // Navigate to Login Screen
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            FadePageRoute(page: const LoginScreen()),
                           );
 
                         } else {

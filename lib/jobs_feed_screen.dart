@@ -1,72 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nexus/services/firestore_service.dart';
+import 'package:nexus/models/job_model.dart';
+import 'package:nexus/utils/page_transitions.dart';
+import 'package:nexus/utils/animations.dart';
 import 'notification_screen.dart';
-import 'job_details_screen.dart'; // <--- ADDED THIS IMPORT
+import 'job_details_screen.dart';
+import 'create_job_screen.dart';
 
 // Custom colors derived from the Figma design series
 const Color _backgroundColor = Color(0xFFEBE3E3); // Light Taupe/Mauve
 const Color _cardColor = Color(0xFFDCDCDC); // Soft Grey for the job cards
 const Color _foregroundColor = Colors.black87; // Dark text/icon color
 
-// Data model for a single job listing
-class JobListing {
-  final String user;
-  final String timeAgo;
-  final String title;
-  final String location;
-  final String salary;
-
-  const JobListing({
-    required this.user,
-    required this.timeAgo,
-    required this.title,
-    required this.location,
-    required this.salary,
-  });
-}
-
-class JobsFeedScreen extends StatelessWidget {
+class JobsFeedScreen extends StatefulWidget {
   const JobsFeedScreen({super.key});
 
-  // Mock list of job data
-  final List<JobListing> jobListings = const [
-    JobListing(
-      user: 'John Doe',
-      timeAgo: '1h',
-      title: 'Store Associate',
-      location: 'Frederick, MD',
-      salary: '17/hr',
-    ),
-    JobListing(
-      user: 'John Doe',
-      timeAgo: '1h',
-      title: 'Store Associate',
-      location: 'Frederick, MD',
-      salary: '17/hr',
-    ),
-    JobListing(
-      user: 'John Doe',
-      timeAgo: '1h',
-      title: 'Store Associate',
-      location: 'Frederick, MD',
-      salary: '17/hr',
-    ),
-    JobListing(
-      user: 'John Doe',
-      timeAgo: '1h',
-      title: 'Store Associate',
-      location: 'Frederick, MD',
-      salary: '17/hr',
-    ),
-  ];
+  @override
+  State<JobsFeedScreen> createState() => _JobsFeedScreenState();
+}
+
+class _JobsFeedScreenState extends State<JobsFeedScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
 
   // Helper widget for a single job card
-  Widget _buildJobCard(BuildContext context, JobListing job) {
+  Widget _buildJobCard(BuildContext context, JobModel job) {
     return GestureDetector(
-      // --- NAVIGATION LOGIC ADDED HERE ---
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const JobDetailsScreen()),
+          SlidePageRoute(page: JobDetailsScreen(job: job)),
         );
       },
       child: Container(
@@ -74,10 +37,10 @@ class JobsFeedScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: _cardColor,
-          borderRadius: BorderRadius.circular(20), // Highly rounded corners
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               spreadRadius: 0,
               blurRadius: 5,
               offset: const Offset(0, 3),
@@ -95,7 +58,7 @@ class JobsFeedScreen extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        job.user,
+                        job.authorName,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -107,7 +70,7 @@ class JobsFeedScreen extends StatelessWidget {
                         job.timeAgo,
                         style: TextStyle(
                           fontSize: 14,
-                          color: _foregroundColor.withOpacity(0.6),
+                          color: _foregroundColor.withValues(alpha: 0.6),
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -179,7 +142,6 @@ class JobsFeedScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: _backgroundColor,
         elevation: 0,
-        // Menu icon on the left - Navigates Back
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: _foregroundColor, size: 30),
           onPressed: () {
@@ -187,7 +149,6 @@ class JobsFeedScreen extends StatelessWidget {
           },
         ),
         centerTitle: true,
-        // Title updated as in design
         title: const Text(
           'Jobs Feed',
           style: TextStyle(
@@ -196,7 +157,6 @@ class JobsFeedScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        // Notification icon on the right
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -206,18 +166,97 @@ class JobsFeedScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                  SlidePageRoute(page: const NotificationScreen()),
                 );
               },
             ),
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: jobListings.length,
-        itemBuilder: (context, index) {
-          return _buildJobCard(context, jobListings[index]);
+      body: StreamBuilder<List<JobModel>>(
+        stream: _firestoreService.jobsStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_foregroundColor),
+              ),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                ],
+              ),
+            );
+          }
+
+          final jobs = snapshot.data ?? [];
+
+          if (jobs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.work_outline,
+                    size: 80,
+                    color: _foregroundColor.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'No jobs posted yet',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: _foregroundColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Be the first to post a job!',
+                    style: TextStyle(
+                      color: _foregroundColor.withValues(alpha: 0.7),
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: jobs.length,
+            itemBuilder: (context, index) {
+              return AnimatedListItem(
+                index: index,
+                child: _buildJobCard(context, jobs[index]),
+              );
+            },
+          );
         },
+      ),
+      floatingActionButton: ScaleAnimation(
+        delay: const Duration(milliseconds: 300),
+        child: FloatingActionButton(
+          onPressed: () {
+            final currentUser = FirebaseAuth.instance.currentUser;
+            if (currentUser != null) {
+              Navigator.push(
+                context,
+                SlideUpPageRoute(page: const CreateJobScreen()),
+              );
+            }
+          },
+          backgroundColor: const Color(0xFF8B77AA),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
     );
   }

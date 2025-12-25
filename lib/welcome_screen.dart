@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'signup_screen.dart'; // Assumes you have the signup_screen.dart from previous steps
-import 'login_screen.dart';  // Import the login screen
+import 'package:nexus/utils/page_transitions.dart';
+import 'package:nexus/utils/animations.dart';
+import 'signup_screen.dart';
+import 'login_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,47 +17,22 @@ class WelcomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Status bar area (Custom UI)
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '9:41',
+              // App title - animate from left
+              FadeSlideAnimation(
+                delay: const Duration(milliseconds: 100),
+                beginOffset: const Offset(-0.3, 0),
+                child: const Padding(
+                  padding: EdgeInsets.only(top: 16, left: 20),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                        'NEXUS',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
-                    ),
-                    Row(
-                      children: const [
-                        Icon(Icons.signal_cellular_4_bar,
-                            color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Icon(Icons.wifi, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Icon(Icons.battery_full, color: Colors.white, size: 20),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // App title
-              const Padding(
-                padding: EdgeInsets.only(top: 8, left: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'UniChatHub',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
@@ -63,82 +40,94 @@ class WelcomeScreen extends StatelessWidget {
 
               const Spacer(flex: 2),
 
-              // Graduation cap icon (White Box version)
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.school,
-                  size: 100,
-                  color: Color(0xFFB4A5A5),
+              // Graduation cap icon - scale animation
+              ScaleAnimation(
+                delay: const Duration(milliseconds: 300),
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.school,
+                    size: 100,
+                    color: Color(0xFFB4A5A5),
+                  ),
                 ),
               ),
 
               const Spacer(flex: 2),
 
-              // Welcome text
-              const Text(
-                'Hello , Welcome !',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+              // Welcome text - fade slide up
+              FadeSlideAnimation(
+                delay: const Duration(milliseconds: 500),
+                child: const Text(
+                  'Hello , Welcome !',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
               // Description text
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 40),
-                child: Text(
-                  'Welcome to  UniChathub Top\nplatform For University Student',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    height: 1.5,
-                    letterSpacing: 0.3,
+              FadeSlideAnimation(
+                delay: const Duration(milliseconds: 600),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    'Welcome to Nexus Top\nplatform For University Student',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      height: 1.5,
+                      letterSpacing: 0.3,
+                    ),
                   ),
                 ),
               ),
 
               const Spacer(flex: 1),
 
-              // Login button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // --- NAVIGATION LOGIC ADDED HERE ---
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LoginScreen()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD4C4A8),
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: const Text(
-                      'Login',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+              // Login button - slide from bottom
+              FadeSlideAnimation(
+                delay: const Duration(milliseconds: 750),
+                beginOffset: const Offset(0, 0.5),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ScaleOnTap(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const LoginScreen()),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4C4A8),
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Login',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -147,34 +136,38 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Signup button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SignupScreen()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD4C4A8),
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: const Text(
-                      'Signup',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+              // Signup button - slide from bottom
+              FadeSlideAnimation(
+                delay: const Duration(milliseconds: 850),
+                beginOffset: const Offset(0, 0.5),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ScaleOnTap(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(page: const SignupScreen()),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4C4A8),
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Signup',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -184,12 +177,15 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 40),
 
               // Bottom indicator
-              Container(
-                width: 134,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(2.5),
+              FadeAnimation(
+                delay: const Duration(milliseconds: 1000),
+                child: Container(
+                  width: 134,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
                 ),
               ),
 

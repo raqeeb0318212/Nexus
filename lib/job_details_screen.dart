@@ -1,19 +1,84 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nexus/models/job_model.dart';
+import 'package:nexus/services/firestore_service.dart';
+import 'package:nexus/utils/page_transitions.dart';
 import 'menu_screen.dart';
 import 'notification_screen.dart';
 
 // Custom colors derived from the Figma design series
 const Color _backgroundColor = Color(0xFFEBE3E3); // Light Taupe/Mauve
 const Color _foregroundColor = Colors.black87; // Dark text/icon color
-const Color _headingColor = Color(0xFF8B77AA); // Purple for 'Events Description' and underlines
-const Color _lightHeadingColor = Color(0xFF8B77AA); // Adjusted to be the same purple
+const Color _headingColor = Color(0xFF8B77AA); // Purple for headings
 
-class JobDetailsScreen extends StatelessWidget {
-  const JobDetailsScreen({super.key});
+class JobDetailsScreen extends StatefulWidget {
+  final JobModel job;
 
-  // Helper widget to build the detail line with an underline that stretches
+  const JobDetailsScreen({super.key, required this.job});
+
+  @override
+  State<JobDetailsScreen> createState() => _JobDetailsScreenState();
+}
+
+class _JobDetailsScreenState extends State<JobDetailsScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  bool _isDeleting = false;
+
+  bool get _isOwner {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    return currentUserId != null && currentUserId == widget.job.authorId;
+  }
+
+  Future<void> _deleteJob() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Job'),
+        content: const Text('Are you sure you want to delete this job posting? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      await _firestoreService.deleteJob(widget.job.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Job deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate deletion
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting job: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Helper widget to build the detail line with an underline
   Widget _buildDetailSection(String title, {bool isUnderlined = true}) {
-    // Determine a width based on the length of the title string (approximation)
     double widthFactor = title.length * 10.5 + 20;
 
     return Container(
@@ -21,11 +86,11 @@ class JobDetailsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         border: isUnderlined
             ? const Border(
-          bottom: BorderSide(
-            color: _headingColor, // Purple underline
-            width: 1.0,
-          ),
-        )
+                bottom: BorderSide(
+                  color: _headingColor,
+                  width: 1.0,
+                ),
+              )
             : null,
       ),
       child: Padding(
@@ -42,7 +107,6 @@ class JobDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Helper for the value part
   Widget _buildValueText(String value) {
     return Text(
       value,
@@ -56,35 +120,21 @@ class JobDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock data for featured events/tasks related to the job
-    const featuredTasks = [
-      'Badminton Tournament (Organization)',
-      'Cricket Tournament (Coordination)',
-      'Track Events (Scoring)',
-      'Football Tournament (Setup)',
-      'Marathon (Logistics)',
-    ];
-
-    // --- UPDATED IMAGE URL (Sports Ground/Track) ---
-    const imageUrl = 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
-
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
         backgroundColor: _backgroundColor,
         elevation: 0,
-        // Menu icon on the left - Navigates to Menu
         leading: IconButton(
           icon: const Icon(Icons.menu, color: _foregroundColor, size: 30),
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const MenuScreen()),
+              SlidePageRoute(page: const MenuScreen()),
             );
           },
         ),
         centerTitle: true,
-        // Title has been updated to 'Job Details'
         title: const Text(
           'Job Details',
           style: TextStyle(
@@ -93,16 +143,27 @@ class JobDetailsScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        // Notification icon on the right
         actions: [
+          if (_isOwner)
+            IconButton(
+              icon: _isDeleting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+              onPressed: _isDeleting ? null : _deleteJob,
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: IconButton(
-              icon: const Icon(Icons.notifications_none, color: _foregroundColor, size: 28),
+              icon: const Icon(Icons.notifications_none,
+                  color: _foregroundColor, size: 28),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                  SlidePageRoute(page: const NotificationScreen()),
                 );
               },
             ),
@@ -115,12 +176,11 @@ class JobDetailsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back Button (Text next to the arrow)
+              // Back Button
               Padding(
                 padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                 child: GestureDetector(
                   onTap: () {
-                    // --- GO BACK TO JOBS FEED ---
                     Navigator.pop(context);
                   },
                   child: const Row(
@@ -140,25 +200,25 @@ class JobDetailsScreen extends StatelessWidget {
                 ),
               ),
 
-              // Events Description Header
+              // Job Description Header
               const Padding(
                 padding: EdgeInsets.only(top: 10.0, bottom: 5.0),
                 child: Text(
-                  'Events Description',
+                  'Job Description',
                   style: TextStyle(
-                    color: _lightHeadingColor, // Purple color
+                    color: _headingColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
 
-              // Job Title (Updated to 'Job Post')
-              const Padding(
-                padding: EdgeInsets.only(bottom: 15.0),
+              // Job Title
+              Padding(
+                padding: const EdgeInsets.only(bottom: 15.0),
                 child: Text(
-                  'Job Post',
-                  style: TextStyle(
+                  widget.job.title,
+                  style: const TextStyle(
                     color: _foregroundColor,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -166,85 +226,103 @@ class JobDetailsScreen extends StatelessWidget {
                 ),
               ),
 
-              // Image Display with Padding and Rounded Corners
-              Container(
-                width: double.infinity,
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
+              // Company Name
+              Row(
+                children: [
+                  const Icon(Icons.business, color: _headingColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.job.company,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: _foregroundColor,
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
-                              : null,
-                          color: _headingColor,
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.broken_image, color: _foregroundColor.withOpacity(0.5), size: 40),
-                            Text(
-                              'Image failed to load',
-                              style: TextStyle(color: _foregroundColor.withOpacity(0.5)),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
                   ),
-                ),
+                ],
               ),
 
               const SizedBox(height: 20),
 
-              // Featured Events Header
-              const Text(
-                'Featured Events',
-                style: TextStyle(
-                  color: _foregroundColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // List of Featured Events
-              ...featuredTasks.map(
-                    (event) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.0),
-                  child: Text(
-                    event,
-                    style: TextStyle(
-                      color: _foregroundColor.withOpacity(0.8),
-                      fontSize: 16,
-                      height: 1.4,
+              // Image Display
+              if (widget.job.imageUrl != null)
+                Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      widget.job.imageUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    (loadingProgress.expectedTotalBytes ?? 1)
+                                : null,
+                            color: _headingColor,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.broken_image,
+                                  color: _foregroundColor.withValues(alpha: 0.5),
+                                  size: 40),
+                              Text(
+                                'Image failed to load',
+                                style: TextStyle(
+                                    color:
+                                        _foregroundColor.withValues(alpha: 0.5)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
-              ).toList(),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
 
-              // Date and Interview Time Details in two columns
+              // Description
+              if (widget.job.description != null && widget.job.description!.isNotEmpty) ...[
+                const Text(
+                  'Description',
+                  style: TextStyle(
+                    color: _foregroundColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  widget.job.description!,
+                  style: TextStyle(
+                    color: _foregroundColor.withValues(alpha: 0.8),
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+
+              // Location and Salary Details
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -252,9 +330,9 @@ class JobDetailsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDetailSection('Date'),
+                        _buildDetailSection('Location'),
                         const SizedBox(height: 10.0),
-                        _buildValueText('20/12/2025'),
+                        _buildValueText(widget.job.location),
                       ],
                     ),
                   ),
@@ -262,10 +340,9 @@ class JobDetailsScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Updated to 'Interview Time'
-                        _buildDetailSection('Interview Time'),
+                        _buildDetailSection('Salary'),
                         const SizedBox(height: 10.0),
-                        _buildValueText('9:30 AM Onwards'),
+                        _buildValueText(widget.job.salary),
                       ],
                     ),
                   ),
@@ -274,10 +351,44 @@ class JobDetailsScreen extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // Location Detail
-              _buildDetailSection('Location'),
+              // Posted by
+              _buildDetailSection('Posted by'),
               const SizedBox(height: 10),
-              _buildValueText('Sports Ground'),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey.shade300,
+                    backgroundImage: widget.job.authorPhotoUrl != null
+                        ? NetworkImage(widget.job.authorPhotoUrl!)
+                        : null,
+                    child: widget.job.authorPhotoUrl == null
+                        ? const Icon(Icons.person, color: Colors.black54)
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.job.authorName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: _foregroundColor,
+                        ),
+                      ),
+                      Text(
+                        widget.job.timeAgo,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _foregroundColor.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
 
               const SizedBox(height: 50),
             ],

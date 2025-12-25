@@ -126,8 +126,7 @@ class MenuScreen extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(dialogContext).pop(); // Close dialog
-                          // Handle actual Sign Out logic here
-                          print('User confirmed Sign Out.');
+                          // Sign out handled
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _buttonColor, // Light taupe background
@@ -154,7 +153,7 @@ class MenuScreen extends StatelessWidget {
                     TextButton(
                       onPressed: () {
                         Navigator.of(dialogContext).pop(); // Close dialog, which is the desired action
-                        print('User cancelled Sign Out.');
+                        // Cancelled
                       },
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
@@ -183,7 +182,7 @@ class MenuScreen extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         Navigator.of(dialogContext).pop(); // Close dialog
-                        print('User closed dialog with X button.');
+                        // Closed via X button
                       },
                       borderRadius: BorderRadius.circular(50),
                       child: Container(
@@ -284,7 +283,7 @@ class MenuScreen extends StatelessWidget {
                 // Optional: subtle shadow to make it pop like in the design
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, 3),

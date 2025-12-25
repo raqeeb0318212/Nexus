@@ -1,30 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'login_screen.dart'; // Import the login screen file
+import 'package:nexus/services/auth_service.dart';
+import 'package:nexus/services/firestore_service.dart';
+import 'package:nexus/utils/page_transitions.dart';
+import 'package:nexus/email_verification_screen.dart';
+import 'login_screen.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({Key? key}) : super(key: key);
+  const SignupScreen({super.key});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // Global key for form validation
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
 
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false;
+  bool _isCheckingUsername = false;
+  bool _isUsernameAvailable = true;
+
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPassController = TextEditingController();
 
-  final List<TextEditingController> otpControllers = List.generate(
-    4,
-        (index) => TextEditingController(),
-  );
-  final List<FocusNode> otpFocusNodes = List.generate(
-    4,
-        (index) => FocusNode(),
-  );
+  Future<void> _checkUsernameAvailability(String username) async {
+    if (username.length < 3) {
+      setState(() => _isUsernameAvailable = false);
+      return;
+    }
+    setState(() => _isCheckingUsername = true);
+    try {
+      final available = await _firestoreService.isUsernameAvailable(username);
+      if (mounted) {
+        setState(() {
+          _isUsernameAvailable = available;
+          _isCheckingUsername = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isCheckingUsername = false);
+    }
+  }
+
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (!_isUsernameAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose an available username'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms & Privacy Policy'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Create user in Firebase Auth (sends verification email automatically)
+      await _authService.signUp(
+        email: emailController.text,
+        password: passwordController.text,
+      );
+
+      // Update display name
+      await _authService.updateDisplayName(nameController.text);
+
+      // Navigate to email verification screen
+      // Firestore profile will be created after email is verified
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          FadePageRoute(
+            page: EmailVerificationScreen(
+              displayName: nameController.text.trim(),
+              username: usernameController.text.trim().toLowerCase(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,46 +125,16 @@ class _SignupScreenState extends State<SignupScreen> {
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              // Wrap Column in Form for validation
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status bar area
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            '9:41',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Row(
-                            children: const [
-                              Icon(Icons.signal_cellular_4_bar,
-                                  color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Icon(Icons.wifi, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Icon(Icons.battery_full,
-                                  color: Colors.white, size: 20),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
 
                     // App title
                     const Text(
-                      'UniChatHub',
+                      'Nexus',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 26,
@@ -101,7 +160,141 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 32),
 
-                    // Email label
+                    // Full Name field
+                    const Text(
+                      'Full Name',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAE3D8),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: TextFormField(
+                        controller: nameController,
+                        textCapitalization: TextCapitalization.words,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          hintText: 'Enter your full name',
+                          hintStyle: TextStyle(color: Colors.black38),
+                          errorStyle: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            height: 0.8,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your name';
+                          }
+                          if (value.length < 2) {
+                            return 'Name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Username field
+                    const Text(
+                      'Username',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAE3D8),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: TextFormField(
+                        controller: usernameController,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          hintText: 'Choose a unique username',
+                          hintStyle: const TextStyle(color: Colors.black38),
+                          prefixText: '@',
+                          prefixStyle: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 16,
+                          ),
+                          suffixIcon: _isCheckingUsername
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              : usernameController.text.length >= 3
+                                  ? Icon(
+                                      _isUsernameAvailable
+                                          ? Icons.check_circle
+                                          : Icons.cancel,
+                                      color: _isUsernameAvailable
+                                          ? Colors.green
+                                          : Colors.red,
+                                    )
+                                  : null,
+                          errorStyle: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            height: 0.8,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          _checkUsernameAvailability(value);
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a username';
+                          }
+                          if (value.length < 3) {
+                            return 'Username must be at least 3 characters';
+                          }
+                          if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                            return 'Only letters, numbers, and underscores';
+                          }
+                          if (!_isUsernameAvailable) {
+                            return 'Username is already taken';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Email field
                     const Text(
                       'Email',
                       style: TextStyle(
@@ -111,10 +304,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         letterSpacing: 0.3,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // Email input field
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAE3D8),
@@ -133,112 +323,30 @@ class _SignupScreenState extends State<SignupScreen> {
                             horizontal: 24,
                             vertical: 16,
                           ),
-                          hintText: '',
+                          hintText: 'Enter your email',
+                          hintStyle: TextStyle(color: Colors.black38),
                           errorStyle: TextStyle(
                             color: Colors.red,
                             fontSize: 12,
                             height: 0.8,
                           ),
                         ),
-                        // --- EMAIL VALIDATION ---
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
                           }
-                          if (!value.contains('@gmail.com')) {
-                            return 'Email must include @gmail.com';
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                              .hasMatch(value)) {
+                            return 'Please enter a valid email';
                           }
                           return null;
                         },
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // OTP label
-                    const Text(
-                      'OTP',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // OTP input boxes and Send OTP button
-                    Row(
-                      children: [
-                        // OTP boxes
-                        ...List.generate(4, (index) {
-                          return Container(
-                            margin: const EdgeInsets.only(right: 12),
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEAE3D8),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: TextField(
-                              controller: otpControllers[index],
-                              focusNode: otpFocusNodes[index],
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              maxLength: 1,
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                counterText: '',
-                              ),
-                              onChanged: (value) {
-                                if (value.length == 1 && index < 3) {
-                                  otpFocusNodes[index + 1].requestFocus();
-                                } else if (value.isEmpty && index > 0) {
-                                  otpFocusNodes[index - 1].requestFocus();
-                                }
-                              },
-                            ),
-                          );
-                        }),
-
-                        const SizedBox(width: 8),
-
-                        // Send OTP button
-                        Expanded(
-                          child: Container(
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEAE3D8),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: TextButton(
-                              onPressed: () {
-                                // Handle send OTP
-                              },
-                              child: const Text(
-                                'Send OTP',
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Password label
+                    // Password field
                     const Text(
                       'Password',
                       style: TextStyle(
@@ -248,10 +356,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         letterSpacing: 0.3,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // Password input field
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAE3D8),
@@ -259,26 +364,38 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       child: TextFormField(
                         controller: passwordController,
-                        obscureText: true,
-                        obscuringCharacter: '*', // Shows * instead of dots
+                        obscureText: _obscurePassword,
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 24,
                             vertical: 16,
                           ),
-                          hintText: '',
-                          errorStyle: TextStyle(
+                          hintText: 'Create a password',
+                          hintStyle: const TextStyle(color: Colors.black38),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.black54,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                          errorStyle: const TextStyle(
                             color: Colors.red,
                             fontSize: 12,
                             height: 0.8,
                           ),
                         ),
-                        // --- PASSWORD VALIDATION ---
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter password';
@@ -291,9 +408,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // Confirm Password label
+                    // Confirm Password field
                     const Text(
                       'Confirm Password',
                       style: TextStyle(
@@ -303,10 +420,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         letterSpacing: 0.3,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // Confirm Password input field
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAE3D8),
@@ -314,26 +428,39 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       child: TextFormField(
                         controller: confirmPassController,
-                        obscureText: true,
-                        obscuringCharacter: '*', // Shows * instead of dots
+                        obscureText: _obscureConfirmPassword,
                         style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 24,
                             vertical: 16,
                           ),
-                          hintText: '',
-                          errorStyle: TextStyle(
+                          hintText: 'Confirm your password',
+                          hintStyle: const TextStyle(color: Colors.black38),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.black54,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                          errorStyle: const TextStyle(
                             color: Colors.red,
                             fontSize: 12,
                             height: 0.8,
                           ),
                         ),
-                        // --- CONFIRM PASSWORD VALIDATION ---
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please confirm your password';
@@ -346,6 +473,49 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
 
+                    const SizedBox(height: 20),
+
+                    // Terms checkbox
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: _agreeToTerms,
+                            onChanged: (value) {
+                              setState(() {
+                                _agreeToTerms = value ?? false;
+                              });
+                            },
+                            fillColor: WidgetStateProperty.resolveWith(
+                              (states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return Colors.white;
+                                }
+                                return const Color(0xFFEAE3D8);
+                              },
+                            ),
+                            checkColor: const Color(0xFFB4A5A5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'I agree to the Terms of Service & Privacy Policy',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 32),
 
                     // Signup button
@@ -353,22 +523,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            // If valid, navigate to Login Screen
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const LoginScreen()),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                  Text('Please fill all fields correctly')),
-                            );
-                          }
-                        },
+                        onPressed: _isLoading ? null : _handleSignup,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD4C4A8),
                           foregroundColor: Colors.black,
@@ -376,15 +531,27 @@ class _SignupScreenState extends State<SignupScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(28),
                           ),
+                          disabledBackgroundColor:
+                              const Color(0xFFD4C4A8).withValues(alpha: 0.6),
                         ),
-                        child: const Text(
-                          'SIGNUP',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.black54),
+                                ),
+                              )
+                            : const Text(
+                                'SIGNUP',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
                       ),
                     ),
 
@@ -406,9 +573,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                        const LoginScreen()),
+                                    SlidePageRoute(
+                                        page: const LoginScreen()),
                                   );
                                 },
                                 child: const Text(
@@ -454,15 +620,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
+    nameController.dispose();
+    usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     confirmPassController.dispose();
-    for (var controller in otpControllers) {
-      controller.dispose();
-    }
-    for (var node in otpFocusNodes) {
-      node.dispose();
-    }
     super.dispose();
   }
 }
