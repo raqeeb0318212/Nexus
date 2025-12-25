@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:nexus/models/comment_model.dart';
 import 'package:nexus/services/firestore_service.dart';
 import 'package:nexus/services/theme_provider.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'dart:io';
 
 /// Bottom sheet for displaying and adding comments to a post
 class CommentsBottomSheet extends StatefulWidget {
@@ -29,12 +31,44 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   bool _isSubmitting = false;
+  bool _showEmojiPicker = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus && _showEmojiPicker) {
+        setState(() => _showEmojiPicker = false);
+      }
+    });
+  }
 
   @override
   void dispose() {
     _commentController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _toggleEmojiPicker() {
+    if (_showEmojiPicker) {
+      _focusNode.requestFocus();
+    } else {
+      _focusNode.unfocus();
+    }
+    setState(() => _showEmojiPicker = !_showEmojiPicker);
+  }
+
+  void _onEmojiSelected(Category? category, Emoji emoji) {
+    final text = _commentController.text;
+    final selection = _commentController.selection;
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+    final newText = text.replaceRange(start, end, emoji.emoji);
+    _commentController.text = newText;
+    _commentController.selection = TextSelection.collapsed(
+      offset: start + emoji.emoji.length,
+    );
   }
 
   Future<void> _submitComment() async {
@@ -60,6 +94,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
       await _firestoreService.addComment(comment);
       _commentController.clear();
       _focusNode.unfocus();
+      setState(() => _showEmojiPicker = false);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -80,7 +115,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.7 + (_showEmojiPicker ? 250 : 0),
       decoration: BoxDecoration(
         color: themeProvider.cardColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -176,7 +211,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
           // Comment input
           Container(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding + 8),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, _showEmojiPicker ? 8 : bottomPadding + 8),
             decoration: BoxDecoration(
               color: themeProvider.cardColor,
               boxShadow: [
@@ -189,6 +224,14 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             ),
             child: Row(
               children: [
+                // Emoji toggle button
+                IconButton(
+                  onPressed: _toggleEmojiPicker,
+                  icon: Icon(
+                    _showEmojiPicker ? Icons.keyboard : Icons.sentiment_satisfied_alt_outlined,
+                    color: themeProvider.secondaryTextColor,
+                  ),
+                ),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -232,6 +275,36 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               ],
             ),
           ),
+
+          // Emoji Picker
+          if (_showEmojiPicker)
+            SizedBox(
+              height: 250,
+              child: EmojiPicker(
+                onEmojiSelected: _onEmojiSelected,
+                config: Config(
+                  height: 250,
+                  checkPlatformCompatibility: true,
+                  emojiViewConfig: EmojiViewConfig(
+                    emojiSizeMax: 28 * (Platform.isIOS ? 1.30 : 1.0),
+                    backgroundColor: themeProvider.cardColor,
+                  ),
+                  categoryViewConfig: CategoryViewConfig(
+                    backgroundColor: themeProvider.cardColor,
+                    indicatorColor: themeProvider.primaryColor,
+                    iconColorSelected: themeProvider.primaryColor,
+                    iconColor: themeProvider.secondaryTextColor,
+                  ),
+                  bottomActionBarConfig: const BottomActionBarConfig(
+                    enabled: false,
+                  ),
+                  searchViewConfig: SearchViewConfig(
+                    backgroundColor: themeProvider.cardColor,
+                    buttonIconColor: themeProvider.primaryColor,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -360,3 +433,4 @@ class _CommentTile extends StatelessWidget {
     }
   }
 }
+

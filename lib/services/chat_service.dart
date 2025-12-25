@@ -11,11 +11,15 @@ class ChatService {
     return _db
         .collection('conversations')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ConversationModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final conversations = snapshot.docs
+              .map((doc) => ConversationModel.fromMap(doc.data(), doc.id))
+              .toList();
+          // Sort client-side to avoid composite index requirement
+          conversations.sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+          return conversations;
+        });
   }
 
   /// Get messages for a conversation

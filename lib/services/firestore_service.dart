@@ -205,11 +205,15 @@ class FirestoreService {
     return _db
         .collection('comments')
         .where('postId', isEqualTo: postId)
-        .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CommentModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final comments = snapshot.docs
+              .map((doc) => CommentModel.fromMap(doc.data(), doc.id))
+              .toList();
+          // Sort client-side to avoid composite index requirement
+          comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          return comments;
+        });
   }
 
   /// Delete a comment

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:nexus/services/firestore_service.dart';
+import 'package:nexus/services/theme_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -84,12 +86,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      final fileName = 'profiles/$userId.jpg';
-      final ref = FirebaseStorage.instance.ref().child(fileName);
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      // Use a unique filename with timestamp to avoid caching issues
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'profiles/${userId}_$timestamp.jpg';
+      
+      // Get the storage reference using the bucket from Firebase options
+      final storageRef = FirebaseStorage.instance.ref();
+      final fileRef = storageRef.child(fileName);
 
-      await ref.putFile(_selectedImage!);
-      return await ref.getDownloadURL();
+      // Read file as bytes for more reliable upload
+      final bytes = await _selectedImage!.readAsBytes();
+
+      // Add metadata for proper image handling
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'uploadedBy': userId},
+      );
+
+      // Upload using putData which is more reliable
+      final uploadTask = fileRef.putData(bytes, metadata);
+      final snapshot = await uploadTask;
+      
+      // Verify upload was successful
+      if (snapshot.state == TaskState.success) {
+        return await fileRef.getDownloadURL();
+      } else {
+        throw Exception('Upload failed with state: ${snapshot.state}');
+      }
     } catch (e) {
+      debugPrint('Profile image upload error: $e');
       throw Exception('Failed to upload image: $e');
     }
   }
@@ -148,19 +177,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFB4A8A9),
+      backgroundColor: themeProvider.secondaryBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFB4A8A9),
+        backgroundColor: themeProvider.secondaryBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
+          icon: Icon(Icons.close, color: themeProvider.textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Edit Profile',
           style: TextStyle(
-            color: Colors.black,
+            color: themeProvider.textColor,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -170,18 +201,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
             child: _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                      valueColor: AlwaysStoppedAnimation<Color>(themeProvider.textColor),
                     ),
                   )
-                : const Text(
+                : Text(
                     'Save',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: themeProvider.textColor,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -190,9 +221,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ],
       ),
       body: !_isInitialized
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFCBB8A1)),
+                valueColor: AlwaysStoppedAnimation<Color>(themeProvider.primaryColor),
               ),
             )
           : SingleChildScrollView(
@@ -208,7 +239,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: [
                           CircleAvatar(
                             radius: 60,
-                            backgroundColor: Colors.white,
+                            backgroundColor: themeProvider.cardColor,
                             backgroundImage: _selectedImage != null
                                 ? FileImage(_selectedImage!)
                                 : (_currentPhotoUrl != null
@@ -226,8 +257,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             right: 0,
                             child: Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFCBB8A1),
+                              decoration: BoxDecoration(
+                                color: themeProvider.primaryColor,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(

@@ -195,7 +195,7 @@ class _ColorChangeScreenState extends State<ColorChangeScreen> {
                 runSpacing: 12,
                 children: _customColorOptions.map((color) {
                   final isSelected = _selectedTheme == AppThemeMode.custom && 
-                                     _customColor?.value == color.value;
+                                     _customColor == color;
                   return GestureDetector(
                     onTap: () {
                       setState(() {

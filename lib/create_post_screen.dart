@@ -38,7 +38,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         });
       }
     } catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error picking image: $e'),
@@ -124,21 +124,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (_selectedImage == null) return null;
 
     try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
       final fileName =
-          'posts/${DateTime.now().millisecondsSinceEpoch}_${FirebaseAuth.instance.currentUser?.uid}.jpg';
-      final ref = FirebaseStorage.instance.ref().child(fileName);
+          'posts/${DateTime.now().millisecondsSinceEpoch}_$userId.jpg';
+      
+      // Get the storage reference
+      final storageRef = FirebaseStorage.instance.ref();
+      final fileRef = storageRef.child(fileName);
 
-      final uploadTask = ref.putFile(_selectedImage!);
+      // Read file as bytes for more reliable upload
+      final bytes = await _selectedImage!.readAsBytes();
+
+      // Add metadata for proper image handling
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'uploadedBy': userId ?? ''},
+      );
+
+      final uploadTask = fileRef.putData(bytes, metadata);
 
       uploadTask.snapshotEvents.listen((event) {
-        setState(() {
-          _uploadProgress = event.bytesTransferred / event.totalBytes;
-        });
+        if (mounted) {
+          setState(() {
+            _uploadProgress = event.bytesTransferred / event.totalBytes;
+          });
+        }
       });
 
-      await uploadTask;
-      return await ref.getDownloadURL();
+      final snapshot = await uploadTask;
+      
+      // Verify upload was successful
+      if (snapshot.state == TaskState.success) {
+        return await fileRef.getDownloadURL();
+      } else {
+        throw Exception('Upload failed with state: ${snapshot.state}');
+      }
     } catch (e) {
+      debugPrint('Post image upload error: $e');
       throw Exception('Failed to upload image: $e');
     }
   }

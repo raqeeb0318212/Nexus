@@ -65,7 +65,7 @@ class ThemeProvider extends ChangeNotifier {
     _customColor = color;
     _themeMode = AppThemeMode.custom;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_customColorKey, color.value);
+    await prefs.setInt(_customColorKey, color.toARGB32());
     await prefs.setInt(_themeModeKey, AppThemeMode.custom.index);
     notifyListeners();
   }
@@ -83,7 +83,6 @@ class ThemeProvider extends ChangeNotifier {
         return const Color(0xFF9C27B0); // Purple (safe for blue-yellow blindness)
       case AppThemeMode.defaultTheme:
       case AppThemeMode.custom:
-      default:
         return const Color(0xFFCBB8A1); // Default app color
     }
   }
@@ -101,7 +100,6 @@ class ThemeProvider extends ChangeNotifier {
         return const Color(0xFFF3E5F5);
       case AppThemeMode.defaultTheme:
       case AppThemeMode.custom:
-      default:
         return const Color(0xFFEBE3E3);
     }
   }
@@ -119,7 +117,6 @@ class ThemeProvider extends ChangeNotifier {
         return const Color(0xFFE1BEE7);
       case AppThemeMode.defaultTheme:
       case AppThemeMode.custom:
-      default:
         return const Color(0xFFB4A8A9);
     }
   }

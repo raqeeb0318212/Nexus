@@ -526,14 +526,19 @@ class PostCard extends StatelessWidget {
             children: [
               const Text('Why are you reporting this post?'),
               const SizedBox(height: 16),
-              ...reasons.map((reason) => RadioListTile<String>(
-                title: Text(reason, style: const TextStyle(fontSize: 14)),
-                value: reason,
+              RadioGroup<String>(
                 groupValue: selectedReason,
                 onChanged: (value) => setState(() => selectedReason = value),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-              )),
+                child: Column(
+                  children: reasons.map((reason) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Radio<String>(value: reason),
+                    title: Text(reason, style: const TextStyle(fontSize: 14)),
+                    onTap: () => setState(() => selectedReason = reason),
+                  )).toList(),
+                ),
+              ),
             ],
           ),
           actions: [
