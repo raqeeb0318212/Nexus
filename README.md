@@ -415,7 +415,7 @@ This is a private project. For any inquiries or collaboration requests, please c
 
 ## 📧 Contact
 
-**Developer:** Raqeeb  
+**Developer:**  Muhammad Raqeeb  
 **Email:** raqeeb0318212@gmail.com  
 **Project:** NEXUS - The Nexus of Alumni
 
@@ -446,7 +446,7 @@ This project is private and not licensed for public use or distribution.
 ---
 
 <div align="center">
-  <b>Made with ❤️ by Raqeeb for the University Student Community</b>
+  <b>Made with ❤️ by Muhammad Raqeeb for the University Student Community</b>
   
   © 2024-2026 NEXUS. All rights reserved.
 </div>
